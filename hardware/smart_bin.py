@@ -48,6 +48,27 @@ pwm_right = GPIO.PWM(RECYCLE_RIGHT, 50)
 pwm_left.start(0)
 pwm_right.start(0)
 
+# HELPER FUNCTIONS
+def open_recycle_servos():
+    pwm_left.ChangeDutyCycle(OPEN_DUTY)
+    time.sleep(0.8)
+    pwm_left.ChangeDutyCycle(0)
+
+def close_recycle_servos():
+    pwm_left.ChangeDutyCycle(CLOSE_DUTY)
+    time.sleep(0.8)
+    pwm_left.ChangeDutyCycle(0)
+
+def open_trash_servos():
+    pwm_right.ChangeDutyCycle(OPEN_DUTY)
+    time.sleep(0.8)
+    pwm_right.ChangeDutyCycle(0)
+
+def close_trash_servos():
+    pwm_right.ChangeDutyCycle(CLOSE_DUTY)
+    time.sleep(0.8)
+    pwm_right.ChangeDutyCycle(0)
+
 def classify_image():
     frame = camera.capture_array()
 
@@ -60,3 +81,74 @@ def classify_image():
     label = idx_to_class[idx]
 
     return label, confidence
+
+# STARTUP
+print("Starting program...", flush=True)
+
+# Ultrasonic sensor
+sensor = DistanceSensor(echo=ECHO_PIN, trigger=TRIG_PIN)
+print("Sensor ready", flush=True)
+
+# Camera
+camera = Picamera2()
+camera.configure(
+    camera.create_still_configuration(
+        main={"size": (640, 480), "format": "RGB888"}
+    )
+)
+camera.start()
+time.sleep(1)
+print("Camera ready", flush=True)
+
+# Model
+print("Loading model...", flush=True)
+model = tf.keras.models.load_model(MODEL_PATH)
+print("Model loaded", flush=True)
+
+# Class map
+with open(CLASS_MAP_PATH) as f:
+    class_indices = json.load(f)
+
+idx_to_class = {v: k for k, v in class_indices.items()}
+print("Class map loaded", flush=True)
+print("Classes:", idx_to_class, flush=True)
+
+print("Entering main loop...", flush=True)
+
+# MAIN LOOP
+try:
+    while True:
+        distance = sensor.distance * 100
+        print(f"Distance: {distance:.1f} cm", flush=True)
+
+        if distance < THRESHOLD_CM:
+            print("Object detected", flush=True)
+
+            label, confidence = classify_image()
+            print(f"Prediction: {label} ({confidence*100:.1f}%)", flush=True)
+
+            if label in RECYCLABLE_CLASSES and confidence*100 > 65:
+                print("Opening recycle lid", flush=True)
+                open_recycle_servos()
+                time.sleep(2)
+                close_recycle_servos()
+            else:
+                print("Not recyclable - open trash can", flush=True)
+                open_trash_servos()
+                time.sleep(2)
+                close_trash_servos()
+
+            # cooldown so it doesn't trigger again instantly
+            time.sleep(2)
+
+        time.sleep(0.2)
+
+except KeyboardInterrupt:
+    print("Stopping...", flush=True)
+
+finally:
+    pwm_left.stop()
+    pwm_right.stop()
+    GPIO.cleanup()
+    camera.stop()
+    print("Cleaned up", flush=True)
