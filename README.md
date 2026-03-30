@@ -5,33 +5,28 @@
 <h1 align="center">Recycla</h1>
 
 <p align="center">
-  <strong>AI-powered smart bin that classifies and sorts campus waste automatically.</strong><br/>
-  Built for CMPE 246 at the University of British Columbia
-</p>
-
-<p align="center">
   <em>Stop guessing. Start recycling right.</em>
 </p>
 
 ---
 
-## What is Recycla?
+## About
 
-Recycla is a smart bin that uses a camera and machine learning to sort waste automatically. An ultrasonic sensor detects when someone approaches, the camera takes a photo, a MobileNetV2 model classifies the material, and a servo opens the correct bin lid.
+Recycla is a smart bin that figures out what you're throwing away and opens the right lid for you. It uses an ultrasonic sensor to know when something's in front of it, a camera to see what it is, and a MobileNetV2 model to classify the material. If it's recyclable and the model is confident enough, the recycle bin opens. Otherwise it defaults to trash.
 
-Classification runs in under 200ms on a Raspberry Pi 4.
+The whole thing runs on a Raspberry Pi 4 and classifies in under 200ms.
 
 ## How It Works
 
 ```
-Ultrasonic Sensor -> Object within 30cm
+Ultrasonic sensor detects object within 30cm
         |
-Arducam 8MP Camera -> Captures image
+Camera takes a photo
         |
-MobileNetV2 -> Classifies material
+Model classifies the material
         |
-Confidence > 65%? -> Yes: open correct bin
-                   -> No:  default to garbage
+Confidence > 65%? -> open recycle bin
+                   -> otherwise open trash
 ```
 
 ## Repo Structure
@@ -39,12 +34,12 @@ Confidence > 65%? -> Yes: open correct bin
 ```
 Recycla/
 ├── model/
-│   └── AI_Model.ipynb      # Colab notebook for training
+│   └── AI_Model.ipynb      # training notebook (run on Colab)
 │
 ├── hardware/
-│   └── smart_bin.py        # Pi controller script
+│   └── smart_bin.py        # runs on the Pi
 │
-├── website/                # Project website (Vite)
+├── website/                # project website
 │   ├── src/
 │   ├── public/
 │   ├── index.html
@@ -52,57 +47,57 @@ Recycla/
 │   ├── vision.html
 │   └── team.html
 │
-└── docs/                   # UML diagrams + logo
+└── docs/                   # diagrams + logo
 ```
 
 ## Tech Stack
 
 | Component | Details |
 |-----------|---------|
-| Compute | Raspberry Pi 4 (4GB RAM) |
-| Camera | Arducam 8MP V2.3 (Sony IMX219) |
+| Compute | Raspberry Pi 4 (4GB) |
+| Camera | Arducam 8MP V2.3 |
 | Sensor | HC-SR04 Ultrasonic |
 | Servos | 2x SG90 (one per bin) |
-| Model | MobileNetV2, transfer learning from ImageNet |
-| Training | Google Colab (GPU) |
+| Model | MobileNetV2 (transfer learning) |
+| Training | Google Colab with GPU |
 | Categories | Glass, Metal, Paper, Plastic, Cardboard, Trash |
-| Website | Vite + Vanilla JS |
+| Website | Vite + JS |
 
-## Getting Started
+## Setup
 
-### Training (Google Colab)
+### Training
 
 1. Open `model/AI_Model.ipynb` in Colab
-2. Put training images in Drive under `CMPE246/Dataset/<class_name>/`
-3. Run Cells 1 through 7
-4. Cell 7 exports the `.tflite` model and class map
+2. Put images in Drive under `CMPE246/Dataset/<class_name>/`
+3. Run all cells in order
+4. Last cell exports a `.tflite` model and class map
 
-### Deploy to Pi
+### Running on the Pi
 
-1. Copy `waste_classifier_V6.tflite`, `class_indices_V6.json`, and `hardware/smart_bin.py` to the Pi
-2. Install dependencies:
+1. Copy `waste_classifier_V6.tflite`, `class_indices_V6.json`, and `smart_bin.py` to the Pi
+2. Install stuff:
    ```bash
    sudo apt update && sudo apt install -y python3-tflite-runtime python3-picamera2 python3-gpiozero pigpio
    sudo systemctl enable pigpiod && sudo systemctl start pigpiod
    ```
-3. Run:
+3. Run it:
    ```bash
    python3 smart_bin.py
    ```
 
-### GPIO Wiring
+### Wiring
 
-| Component | GPIO Pin | Physical Pin |
-|-----------|----------|-------------|
-| Ultrasonic TRIG | GPIO 23 | Pin 16 |
-| Ultrasonic ECHO | GPIO 24 | Pin 18 |
-| Recycle Servo | GPIO 17 | Pin 11 |
-| Trash Servo | GPIO 22 | Pin 15 |
+| Component | GPIO | Physical Pin |
+|-----------|------|-------------|
+| Ultrasonic TRIG | 23 | Pin 16 |
+| Ultrasonic ECHO | 24 | Pin 18 |
+| Recycle Servo | 17 | Pin 11 |
+| Trash Servo | 22 | Pin 15 |
 | Ultrasonic VCC | 5V | Pin 2/4 |
 | Servo VCC | External 5V PSU | - |
-| All GND | Shared GND | Pin 6/9/14 |
+| GND | Shared | Pin 6/9/14 |
 
-**Note:** Power the servos from an external 5V supply, not the Pi. Connect the PSU ground to a Pi GND pin.
+Servos need their own 5V supply. Don't run them off the Pi, it can't handle the current. Just make sure the grounds are connected.
 
 ### Website
 
@@ -112,22 +107,18 @@ npm install
 npm run dev
 ```
 
-## Adding New Training Data
+## Retraining with new images
 
-1. Add images to `Google Drive > CMPE246/Dataset/<class_name>/`
-2. Run Cell 6 in the notebook to re-sync
+1. Drop new images into the right folder on Drive (`CMPE246/Dataset/<class_name>/`)
+2. Run Cell 6 to re-sync
 3. Re-run Cells 2 through 5
-4. Copy the new `.tflite` file to the Pi
+4. Copy the new model to the Pi
 
 ## Team
 
 | Name | Role |
 |------|------|
 | Adam Hassan | Team Lead & Marketing |
-| Zivan Erdevicki | Software Design & Development |
-| Bassam Alghamdi | Machine Learning & Integration |
+| Zivan Erdevicki | Software & Development |
+| Bassam Alghamdi | Machine Learning |
 | Mahmoud Rabie | Hardware & Integration |
-
-## License
-
-Built for CMPE 246 at UBC Okanagan.
